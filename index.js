@@ -1,20 +1,49 @@
 const express = require('express');
+const cookieParser = require('cookie-parser');
+const path = require('path');
 const {connectToMongoDB}= require('./connection');
-const urlRoute=require('./routes/url');
+const {restricttoLoggedInUserOnly,checkAuth}=require('./middlewares/auth');
+
 const URL = require('./models/url');
 const app =express();
 const port=8001;
+
+
+const urlRoute=require('./routes/url');
+const staticRouter=require('./routes/staticRouter');
+const userRoute=require('./routes/user');
 //using through model veiw controllers .
-app.use(express.json());
+
 connectToMongoDB("mongodb://localhost:27017/short-url")
 .then(()=>console.log("mongodb is connected"));
-app.use('/url',urlRoute);
-app.get('/:shortid', async (req,res)=>{
+
+app.set('view engine','ejs');
+app.set('views',path.resolve('./views'));
+
+app.use(express.json());
+app.use(express.urlencoded({extended:false}));
+app.use(cookieParser());
+
+app.get('/', async (req,res)=>{
+   const allurls= await URL.find();
+    return res.render('home',{urls:allurls});
+});
+
+
+
+
+app.use('/url',restricttoLoggedInUserOnly,urlRoute);
+app.use('/user',userRoute);
+app.use('/',checkAuth,staticRouter);
+
+
+app.get('/url/:shortid', async (req,res)=>{
    const shortId =req.params.shortid;
    
    try {
     const entry = await URL.findOneAndUpdate(
        { shortid : shortId },
+      
        {
           $push: {
              visitHistory: {
@@ -23,10 +52,11 @@ app.get('/:shortid', async (req,res)=>{
           },
        }
     );
-    res.redirect(entry.redirectURL);
     if (!entry) {
-        return res.status(404).send('URL not found'); // Send a 404 response if entry is not found
-     }
+      return res.status(404).send('URL not found'); // Send a 404 response if entry is not found
+   }
+    res.redirect(entry.redirectURL);
+    
 
      
     }
