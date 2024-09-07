@@ -1,12 +1,13 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+require('dotenv').config()
 const {connectToMongoDB}= require('./connection');
 const {restricttoLoggedInUserOnly,checkAuth}=require('./middlewares/auth');
 
 const URL = require('./models/url');
 const app =express();
-const port=8001;
+const port=8000;
 
 
 const urlRoute=require('./routes/url');
@@ -14,7 +15,7 @@ const staticRouter=require('./routes/staticRouter');
 const userRoute=require('./routes/user');
 //using through model veiw controllers .
 
-connectToMongoDB("mongodb://localhost:27017/short-url")
+connectToMongoDB(process.env.MONGODB_URI)
 .then(()=>console.log("mongodb is connected"));
 
 app.set('view engine','ejs');
